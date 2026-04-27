@@ -1,43 +1,28 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>chaT - 明るいチャット</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div id="auth-overlay">
-        <div class="auth-card">
-            <h2 id="auth-title">chaT にログイン</h2>
-            <input type="text" id="auth-displayname" placeholder="表示名（新規登録時のみ）" style="display:none;">
-            <input type="text" id="auth-userid" placeholder="ユーザーID（英数字）">
-            <input type="password" id="auth-password" placeholder="パスワード">
-            <button onclick="handleAuth()" id="auth-btn">ログイン</button>
-            <p onclick="toggleAuthMode()" id="auth-toggle">新規登録はこちら</p>
-        </div>
-    </div>
+* { box-sizing: border-box; }
+body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; background: #fff; }
 
-    <div id="app" style="display: none;">
-        <aside id="sidebar">
-            <div class="server-name">chaT</div>
-            <ul id="channel-list">
-                <li onclick="selectChannel('general')"># general</li>
-            </ul>
-            <div id="user-info"></div>
-            <button onclick="logout()" class="logout-btn">ログアウト</button>
-        </aside>
+/* 認証画面 */
+#auth-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:#f0f2f5; display:flex; justify-content:center; align-items:center; z-index:1000; }
+.auth-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+.auth-card input { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; }
+.auth-card button { width: 100%; padding: 12px; background: #4a90e2; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+#auth-toggle { font-size: 0.8rem; color: #666; cursor: pointer; margin-top: 15px; }
 
-        <main id="chat-container">
-            <header id="chat-header">
-                <span id="current-channel"># general</span>
-            </header>
-            <div id="messages"></div>
-            <div id="input-area">
-                <input type="text" id="message-input" placeholder="メッセージを送信...">
-            </div>
-        </main>
-    </div>
-    <script src="app.js"></script>
-</body>
-</html>
+/* メインレイアウト */
+#app { display: flex; height: 100vh; }
+#sidebar { width: 240px; background: #f8f9fa; border-right: 1px solid #eee; display: flex; flex-direction: column; }
+.server-name { padding: 20px; font-weight: bold; color: #4a90e2; font-size: 1.2rem; border-bottom: 1px solid #eee; }
+#channel-list { flex: 1; list-style: none; padding: 10px; margin: 0; }
+#channel-list li { padding: 10px; border-radius: 8px; cursor: pointer; color: #555; }
+#channel-list li:hover { background: #eef2f7; color: #4a90e2; }
+
+#chat-container { flex: 1; display: flex; flex-direction: column; }
+#chat-header { padding: 15px 25px; border-bottom: 1px solid #eee; font-weight: bold; }
+#messages { flex: 1; padding: 20px; overflow-y: auto; background: #fff; }
+#input-area { padding: 20px; border-top: 1px solid #eee; }
+#message-input { width: 100%; padding: 15px; border-radius: 25px; border: 1px solid #eee; background: #f1f3f4; outline: none; }
+
+.msg-item { margin-bottom: 15px; }
+.msg-user { font-size: 0.8rem; font-weight: bold; color: #4a90e2; margin-bottom: 4px; }
+.msg-content { background: #f1f3f4; padding: 10px 15px; border-radius: 15px; display: inline-block; }
+.logout-btn { margin: 10px; padding: 5px; font-size: 0.7rem; }
