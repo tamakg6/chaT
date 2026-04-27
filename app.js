@@ -1,9 +1,9 @@
-const API_URL = "https://cha-t.tama-kg-6.workers.dev"; 
+const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // ←ここを自分のURLに！
 let currentUser = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
-let lastMsgCounts = {}; // 各チャンネルの既知のメッセージ数を保存
-let unreadChannels = new Set(); 
-let isSignUp = false; // ← これが重要！
+let lastMsgCounts = {}; 
+let unreadChannels = new Set();
+let isSignUp = false;
 
 function toggleSidebar() { document.getElementById('app').classList.toggle('sidebar-open'); }
 
@@ -19,6 +19,7 @@ async function handleAuth() {
     const password = document.getElementById('auth-password').value;
     const display_name = document.getElementById('auth-displayname').value;
     if(!user_id || !password) return alert("入力してください");
+
     const endpoint = isSignUp ? "/register" : "/login";
     try {
         const res = await fetch(`${API_URL}${endpoint}`, {
@@ -32,12 +33,10 @@ async function handleAuth() {
             else { 
                 currentUser = data.user; 
                 localStorage.setItem('chaT_user', JSON.stringify(currentUser));
-                const audio = document.getElementById('notification-sound');
-                audio.play().then(()=>audio.pause()).catch(()=>{}); 
                 showApp(); 
             }
         } else { alert(data.error); }
-    } catch (e) { alert("通信エラー"); }
+    } catch (e) { alert("ログインに失敗しました。URLを確認してください。"); }
 }
 
 function showApp() {
@@ -46,21 +45,15 @@ function showApp() {
     document.getElementById('user-display-name').textContent = currentUser.display_name;
     if ("Notification" in window) Notification.requestPermission();
     loadUserList();
-    // 全チャンネルの初期カウントを取得しにいく
-    checkAllUnread();
-    if(!window.chatInterval) window.chatInterval = setInterval(checkAllUnread, 3000);
+    setInterval(updatePolling, 3000);
+    selectChannel('general');
 }
 
-// 全ての更新をチェックする
-async function checkAllUnread() {
-    // 1. 現在のチャンネルを更新
+async function updatePolling() {
     await loadMessages(currentChannelId);
-    
-    // 2. 他のチャンネル/DMの未読をチェック（簡易化のため主要なもののみ）
-    // 実際にはサイドバーにあるIDすべてをループしてチェックするのが理想
-    const sidebarItems = document.querySelectorAll('#sidebar li[data-id]');
-    sidebarItems.forEach(item => {
-        const id = item.getAttribute('data-id');
+    // サイドバーにあるIDすべてをチェック
+    document.querySelectorAll('#sidebar li[data-id]').forEach(li => {
+        const id = li.getAttribute('data-id');
         if (id !== currentChannelId) checkUnreadFor(id);
     });
 }
@@ -80,6 +73,7 @@ async function checkUnreadFor(channelId) {
 async function loadMessages(channelId) {
     try {
         const res = await fetch(`${API_URL}/messages?channel=${channelId}`);
+        if (!res.ok) return;
         const data = await res.json();
         const msgDiv = document.getElementById('messages');
         
@@ -87,9 +81,6 @@ async function loadMessages(channelId) {
             const newMsg = data[data.length - 1];
             if (newMsg.sender_id !== currentUser.user_id) {
                 document.getElementById('notification-sound').play().catch(()=>{});
-                if (Notification.permission === "granted") {
-                    new Notification(`chaT: ${newMsg.display_name}`, { body: newMsg.content });
-                }
             }
         }
         lastMsgCounts[channelId] = data.length;
@@ -117,9 +108,7 @@ function renderBadges() {
                 badge.className = 'unread-badge';
                 li.appendChild(badge);
             }
-        } else if (badge) {
-            badge.remove();
-        }
+        } else if (badge) { badge.remove(); }
     });
 }
 
@@ -128,34 +117,31 @@ function selectChannel(id) {
     unreadChannels.delete(id);
     renderBadges();
     const isAnnounce = (id === 'announcement');
-    updateHeader(isAnnounce ? "📢 お知らせ" : `# ${id}`, isAnnounce);
-    if(window.innerWidth <= 768) toggleSidebar();
-    loadMessages(id);
-}
-
-async function loadUserList() {
-    const res = await fetch(`${API_URL}/users`);
-    const users = await res.json();
-    const userListDiv = document.getElementById('user-list');
-    userListDiv.innerHTML = users
-        .filter(u => u.user_id !== currentUser.user_id)
-        .map(u => {
-            const dmId = `dm_${[currentUser.user_id, u.user_id].sort().join('_')}`;
-            return `<li onclick="selectChannel('${dmId}')" data-id="${dmId}">👤 ${u.display_name}</li>`;
-        }).join('');
-}
-
-function updateHeader(title, isAnnounce) {
-    document.getElementById('display-channel-name').textContent = title;
+    document.getElementById('display-channel-name').textContent = isAnnounce ? "📢 お知らせ" : `# ${id}`;
     const container = document.getElementById('chat-container');
     const inputArea = document.getElementById('input-area');
     if (isAnnounce) {
         container.classList.add('mode-announcement');
-        inputArea.style.display = (currentUser.user_id === 'admin') ? 'flex' : 'none';
+        inputArea.style.display = (currentUser.user_id === 'admin') ? 'block' : 'none';
     } else {
         container.classList.remove('mode-announcement');
-        inputArea.style.display = 'flex';
+        inputArea.style.display = 'block';
     }
+    if(window.innerWidth <= 768) document.getElementById('app').classList.remove('sidebar-open');
+    loadMessages(id);
+}
+
+async function loadUserList() {
+    try {
+        const res = await fetch(`${API_URL}/users`);
+        const users = await res.json();
+        document.getElementById('user-list').innerHTML = users
+            .filter(u => u.user_id !== currentUser.user_id)
+            .map(u => {
+                const dmId = `dm_${[currentUser.user_id, u.user_id].sort().join('_')}`;
+                return `<li onclick="selectChannel('${dmId}')" data-id="${dmId}">👤 ${u.display_name}</li>`;
+            }).join('');
+    } catch (e) {}
 }
 
 document.getElementById('message-input').addEventListener('keypress', async (e) => {
