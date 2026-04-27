@@ -3,25 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>chaT - Connect with Roles</title>
+    <title>chaT - 明るいチャット</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="app">
+    <div id="auth-overlay">
+        <div class="auth-card">
+            <h2 id="auth-title">chaT にログイン</h2>
+            <input type="text" id="auth-displayname" placeholder="表示名（新規登録時のみ）" style="display:none;">
+            <input type="text" id="auth-userid" placeholder="ユーザーID（英数字）">
+            <input type="password" id="auth-password" placeholder="パスワード">
+            <button onclick="handleAuth()" id="auth-btn">ログイン</button>
+            <p onclick="toggleAuthMode()" id="auth-toggle">新規登録はこちら</p>
+        </div>
+    </div>
+
+    <div id="app" style="display: none;">
         <aside id="sidebar">
-            <div class="server-name">chaT Server</div>
+            <div class="server-name">chaT</div>
             <ul id="channel-list">
-                <li class="loading">読み込み中...</li>
+                <li onclick="selectChannel('general')"># general</li>
             </ul>
+            <div id="user-info"></div>
+            <button onclick="logout()" class="logout-btn">ログアウト</button>
         </aside>
 
         <main id="chat-container">
             <header id="chat-header">
-                <span id="current-channel"># チャンネルを選択</span>
+                <span id="current-channel"># general</span>
             </header>
-            <div id="messages">
-                <p class="welcome">chaTへようこそ！左からチャンネルを選んでください。</p>
-            </div>
+            <div id="messages"></div>
             <div id="input-area">
                 <input type="text" id="message-input" placeholder="メッセージを送信...">
             </div>
