@@ -7,8 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="chaT">
-    <link rel="apple-touch-icon" href="icon.jpg">
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
     <div id="auth-overlay">
@@ -24,17 +24,16 @@
 
     <div id="app" style="display: none;">
         <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
-        
         <aside id="sidebar">
             <div class="server-name">chaT</div>
             <div class="sidebar-scroll">
                 <div class="sidebar-section">公式</div>
                 <ul id="official-list">
-                    <li onclick="selectChannel('announcement')">📢 お知らせ</li>
+                    <li onclick="selectChannel('announcement')" data-id="announcement">📢 お知らせ</li>
                 </ul>
                 <div class="sidebar-section">チャンネル</div>
                 <ul id="channel-list">
-                    <li onclick="selectChannel('general')"># general</li>
+                    <li onclick="selectChannel('general')" data-id="general"># general</li>
                 </ul>
                 <div class="sidebar-section">ダイレクトメッセージ</div>
                 <ul id="user-list"></ul>
@@ -57,6 +56,6 @@
         </main>
     </div>
     <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
-    <script src="app.js"></script>
+    <script src="app.js?v=15"></script>
 </body>
 </html>
