@@ -2,53 +2,283 @@
     --primary: #4a90e2;
     --sidebar-bg: #f8f9fa;
     --border: #eee;
+    --text-main: #333;
+    --text-sub: #888;
 }
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; height: 100vh; overflow: hidden; }
+/* 全体設定 */
+* { 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent; 
+    margin: 0; 
+    padding: 0;
+}
 
-/* 認証画面 */
-#auth-overlay { position: fixed; inset: 0; background: #f0f2f5; display: flex; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
-.auth-card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 100%; max-width: 350px; display: flex; flex-direction: column; gap: 12px; }
-.auth-card input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; } /* iPhoneのズーム防止に16px */
-.auth-card button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+body { 
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+    height: 100vh; 
+    overflow: hidden; 
+    color: var(--text-main);
+}
 
-/* アプリ基本構造 */
-#app { display: flex; height: 100vh; width: 100vw; position: relative; }
+/* --- 1. 認証画面（ログイン・登録） --- */
+#auth-overlay { 
+    position: fixed; 
+    inset: 0; 
+    background: #f0f2f5; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    z-index: 3000; 
+    padding: 20px; 
+}
 
-/* サイドバー */
-#sidebar { width: 260px; background: var(--sidebar-bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1001; transition: transform 0.3s ease; }
-.server-name { padding: 20px; font-weight: bold; color: var(--primary); font-size: 1.2rem; border-bottom: 1px solid var(--border); }
-.sidebar-scroll { flex: 1; overflow-y: auto; }
-.sidebar-section { padding: 15px 15px 5px; font-size: 0.7rem; color: #888; font-weight: 800; letter-spacing: 1px; }
-#channel-list, #user-list { list-style: none; padding: 0 10px; margin: 0; }
-#channel-list li, #user-list li { padding: 10px 15px; border-radius: 8px; cursor: pointer; margin-bottom: 2px; transition: 0.2s; }
-#channel-list li:hover, #user-list li:hover { background: #eef2f7; }
+.auth-card { 
+    background: white; 
+    padding: 30px; 
+    border-radius: 16px; 
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1); 
+    width: 100%; 
+    max-width: 350px; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 12px; 
+}
 
-/* チャットエリア */
-#chat-container { flex: 1; display: flex; flex-direction: column; min-width: 0; background: white; }
-#chat-header { padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: bold; display: flex; align-items: center; }
-#mobile-header { display: none; } /* PCでは隠す */
-#messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
-#input-area { padding: 15px 20px; border-top: 1px solid var(--border); background: white; }
-#message-input { width: 100%; padding: 12px 20px; border-radius: 24px; border: 1px solid var(--border); background: #f1f3f4; outline: none; font-size: 16px; }
+.auth-card h2 {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+    text-align: center;
+}
 
-/* メッセージの見た目 */
-.msg-user { font-size: 0.85rem; font-weight: bold; color: var(--primary); margin-bottom: 4px; }
-.msg-content { background: #f1f3f4; padding: 10px 16px; border-radius: 18px; display: inline-block; max-width: 85%; word-wrap: break-word; line-height: 1.4; }
+.auth-card input { 
+    padding: 12px; 
+    border: 1px solid #ddd; 
+    border-radius: 8px; 
+    font-size: 16px; /* iPhoneでの自動ズーム防止 */
+}
 
-/* ユーザー情報エリア */
-#user-info-area { padding: 12px 15px; background: #f1f3f4; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
-#user-info-area button { padding: 4px 8px; border: none; background: #ddd; border-radius: 4px; cursor: pointer; }
+.auth-card button { 
+    padding: 12px; 
+    background: var(--primary); 
+    color: white; 
+    border: none; 
+    border-radius: 8px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    font-size: 1rem;
+}
 
-/* --- レスポンシブ (スマホ対応) --- */
+#auth-toggle { 
+    font-size: 0.85rem; 
+    color: var(--text-sub); 
+    text-align: center; 
+    cursor: pointer; 
+    margin-top: 5px;
+}
+
+/* --- 2. アプリ基本レイアウト --- */
+#app { 
+    display: flex; 
+    height: 100vh; 
+    width: 100vw; 
+    position: relative; 
+}
+
+/* --- 3. サイドバー --- */
+#sidebar { 
+    width: 260px; 
+    background: var(--sidebar-bg); 
+    border-right: 1px solid var(--border); 
+    display: flex; 
+    flex-direction: column; 
+    z-index: 2000; 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.server-name { 
+    padding: 20px; 
+    font-weight: bold; 
+    color: var(--primary); 
+    font-size: 1.3rem; 
+    border-bottom: 1px solid var(--border); 
+}
+
+.sidebar-scroll { 
+    flex: 1; 
+    overflow-y: auto; 
+}
+
+.sidebar-section { 
+    padding: 20px 15px 5px; 
+    font-size: 0.7rem; 
+    color: var(--text-sub); 
+    font-weight: 800; 
+    letter-spacing: 1px; 
+    text-transform: uppercase;
+}
+
+#channel-list, #user-list { 
+    list-style: none; 
+    padding: 0 10px; 
+}
+
+#channel-list li, #user-list li { 
+    padding: 10px 15px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    margin-bottom: 2px; 
+    transition: 0.2s;
+    color: #555;
+}
+
+#channel-list li:hover, #user-list li:hover { 
+    background: #eef2f7; 
+    color: var(--primary);
+}
+
+#user-info-area { 
+    padding: 15px; 
+    background: #f1f3f4; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    font-size: 0.85rem; 
+    border-top: 1px solid var(--border);
+}
+
+#user-info-area button { 
+    padding: 5px 10px; 
+    border: none; 
+    background: #e0e0e0; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    font-size: 0.75rem;
+}
+
+/* --- 4. メインチャットエリア --- */
+#chat-container { 
+    flex: 1; 
+    display: flex; 
+    flex-direction: column; 
+    min-width: 0; 
+    background: white; 
+    position: relative;
+}
+
+#chat-header { 
+    padding: 15px 25px; 
+    border-bottom: 1px solid var(--border); 
+    font-weight: bold; 
+    font-size: 1.1rem;
+    display: flex; 
+    align-items: center; 
+}
+
+#mobile-header { 
+    display: none; /* デフォルトは隠す(PC/iPad用) */
+    width: 100%;
+    height: 60px;
+    background: white;
+    padding: 0 15px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    justify-content: flex-start;
+}
+
+#mobile-header button {
+    background: none;
+    border: none;
+    font-size: 1.8rem;
+    cursor: pointer;
+    margin-right: 15px;
+}
+
+#messages { 
+    flex: 1; 
+    padding: 20px; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 15px; 
+}
+
+.msg-item {
+    max-width: 85%;
+}
+
+.msg-user { 
+    font-size: 0.8rem; 
+    font-weight: bold; 
+    color: var(--primary); 
+    margin-bottom: 3px; 
+}
+
+.msg-content { 
+    background: #f1f3f4; 
+    padding: 10px 16px; 
+    border-radius: 18px; 
+    display: inline-block; 
+    word-wrap: break-word; 
+    line-height: 1.5;
+}
+
+#input-area { 
+    padding: 15px 20px; 
+    border-top: 1px solid var(--border); 
+    background: white; 
+}
+
+#message-input { 
+    width: 100%; 
+    padding: 12px 20px; 
+    border-radius: 24px; 
+    border: 1px solid var(--border); 
+    background: #f1f3f4; 
+    outline: none; 
+    font-size: 16px; 
+}
+
+/* サイドバー開閉時のオーバーレイ */
+#sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1500;
+}
+
+/* --- 5. レスポンシブ設定 (スマホ用) --- */
 @media (max-width: 768px) {
-    #sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); } /* 隠す */
-    #app.sidebar-open #sidebar { transform: translateX(0); } /* 開く */
-    #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; }
-    #app.sidebar-open #sidebar-overlay { display: block; }
+    #mobile-header { 
+        display: flex; 
+    }
     
-    #mobile-header { display: flex; align-items: center; background: white; padding: 10px 15px; border-bottom: 1px solid var(--border); gap: 15px; }
-    #mobile-header button { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #555; }
-    #chat-header { display: none; } /* スマホではヘッダーをmobile-headerに任せる */
+    #chat-header { 
+        display: none; 
+    }
+
+    #sidebar { 
+        position: fixed; 
+        top: 0; 
+        left: 0; 
+        bottom: 0; 
+        transform: translateX(-100%); 
+    }
+
+    #app.sidebar-open #sidebar { 
+        transform: translateX(0); 
+    }
+
+    #app.sidebar-open #sidebar-overlay {
+        display: block;
+    }
+    
+    #messages {
+        padding: 15px;
+    }
+    
+    .msg-content {
+        max-width: 100%;
+    }
 }
