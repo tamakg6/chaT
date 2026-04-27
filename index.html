@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>chaT -新しいウェブチャット</title>
+    <title>chaT - 会員制チャット</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="auth-overlay">
         <div class="auth-card">
             <h2 id="auth-title">chaT にログイン</h2>
-            <input type="text" id="auth-displayname" placeholder="表示名（新規登録時のみ）" style="display:none;">
-            <input type="text" id="auth-userid" placeholder="ユーザーID（英数字）">
+            <input type="text" id="auth-displayname" placeholder="表示名（登録時のみ）" style="display:none;">
+            <input type="text" id="auth-userid" placeholder="ユーザーID">
             <input type="password" id="auth-password" placeholder="パスワード">
             <button onclick="handleAuth()" id="auth-btn">ログイン</button>
             <p onclick="toggleAuthMode()" id="auth-toggle">新規登録はこちら</p>
@@ -21,16 +21,21 @@
     <div id="app" style="display: none;">
         <aside id="sidebar">
             <div class="server-name">chaT</div>
+            <div class="sidebar-section">チャンネル</div>
             <ul id="channel-list">
                 <li onclick="selectChannel('general')"># general</li>
             </ul>
-            <div id="user-info"></div>
-            <button onclick="logout()" class="logout-btn">ログアウト</button>
+            <div class="sidebar-section">ダイレクトメッセージ</div>
+            <ul id="user-list"></ul>
+            <div id="user-info-area">
+                <span id="user-display-name"></span>
+                <button onclick="logout()">ログアウト</button>
+            </div>
         </aside>
 
         <main id="chat-container">
             <header id="chat-header">
-                <span id="current-channel"># general</span>
+                <span id="current-channel-name"># general</span>
             </header>
             <div id="messages"></div>
             <div id="input-area">
