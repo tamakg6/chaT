@@ -2,25 +2,31 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>My Discord Clone</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chaT - Connect with Roles</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app">
-        <nav id="sidebar">
-            <h3>チャンネル</h3>
+        <aside id="sidebar">
+            <div class="server-name">chaT Server</div>
             <ul id="channel-list">
-                </ul>
-        </nav>
-        
-        <main id="chat-area">
-            <header id="channel-header">チャンネルを選択してください</header>
-            <div id="messages"></div>
+                <li class="loading">読み込み中...</li>
+            </ul>
+        </aside>
+
+        <main id="chat-container">
+            <header id="chat-header">
+                <span id="current-channel"># チャンネルを選択</span>
+            </header>
+            <div id="messages">
+                <p class="welcome">chaTへようこそ！左からチャンネルを選んでください。</p>
+            </div>
             <div id="input-area">
-                <input type="text" id="msg-input" placeholder="メッセージを送信...">
+                <input type="text" id="message-input" placeholder="メッセージを送信...">
             </div>
         </main>
     </div>
     <script src="app.js"></script>
 </body>
-</html>
+</html>s
