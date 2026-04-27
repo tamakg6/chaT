@@ -1,12 +1,9 @@
-const API_URL = "https://cha-t.tama-kg-6.workers.dev"; 
+const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // 自分のURLに
 let currentUser = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
 let isSignUp = false;
 
-// サイドバー開閉
-function toggleSidebar() {
-    document.getElementById('app').classList.toggle('sidebar-open');
-}
+function toggleSidebar() { document.getElementById('app').classList.toggle('sidebar-open'); }
 
 function toggleAuthMode() {
     isSignUp = !isSignUp;
@@ -20,7 +17,6 @@ async function handleAuth() {
     const password = document.getElementById('auth-password').value;
     const display_name = document.getElementById('auth-displayname').value;
     if(!user_id || !password) return alert("入力してください");
-
     const endpoint = isSignUp ? "/register" : "/login";
     try {
         const res = await fetch(`${API_URL}${endpoint}`, {
@@ -58,20 +54,32 @@ async function loadUserList() {
 function startDM(targetId, targetName) {
     const ids = [currentUser.user_id, targetId].sort();
     currentChannelId = `dm_${ids[0]}_${ids[1]}`;
-    updateHeader(`${targetName} とのDM`);
+    updateHeader(`${targetName} とのDM`, false);
     if(window.innerWidth <= 768) toggleSidebar();
     loadMessages();
 }
 
 function selectChannel(id) {
     currentChannelId = id;
-    updateHeader(`# ${id}`);
+    const isAnnounce = (id === 'announcement');
+    updateHeader(isAnnounce ? "📢 お知らせ" : `# ${id}`, isAnnounce);
     if(window.innerWidth <= 768) toggleSidebar();
     loadMessages();
 }
 
-function updateHeader(title) {
+function updateHeader(title, isAnnounce) {
     document.getElementById('display-channel-name').textContent = title;
+    const container = document.getElementById('chat-container');
+    const inputArea = document.getElementById('input-area');
+
+    if (isAnnounce) {
+        container.classList.add('mode-announcement');
+        // 管理者(admin)以外はお知らせで入力できないようにする
+        inputArea.style.display = (currentUser.user_id === 'admin') ? 'flex' : 'none';
+    } else {
+        container.classList.remove('mode-announcement');
+        inputArea.style.display = 'flex';
+    }
 }
 
 async function loadMessages() {
@@ -80,14 +88,12 @@ async function loadMessages() {
         const data = await res.json();
         const msgDiv = document.getElementById('messages');
         const isBottom = msgDiv.scrollHeight - msgDiv.scrollTop <= msgDiv.clientHeight + 100;
-        
         msgDiv.innerHTML = data.map(m => `
             <div class="msg-item">
                 <div class="msg-user">${m.display_name || m.sender_id}</div>
                 <div class="msg-content">${m.content}</div>
             </div>
         `).join('');
-        
         if(isBottom) msgDiv.scrollTop = msgDiv.scrollHeight;
     } catch (e) {}
 }
@@ -99,11 +105,7 @@ document.getElementById('message-input').addEventListener('keypress', async (e) 
         await fetch(`${API_URL}/messages`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                channel_id: currentChannelId,
-                sender_id: currentUser.user_id,
-                content: content
-            })
+            body: JSON.stringify({ channel_id: currentChannelId, sender_id: currentUser.user_id, content: content })
         });
         loadMessages();
     }
