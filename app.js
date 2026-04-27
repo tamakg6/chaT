@@ -3,7 +3,7 @@ let currentUser = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
 let isSignUp = false;
 
-// サイドバー開閉（スマホ用）
+// サイドバー開閉
 function toggleSidebar() {
     document.getElementById('app').classList.toggle('sidebar-open');
 }
@@ -30,7 +30,7 @@ async function handleAuth() {
         });
         const data = await res.json();
         if (res.ok) {
-            if (isSignUp) { alert("登録完了！"); toggleAuthMode(); }
+            if (isSignUp) { alert("登録完了！ログインしてください。"); toggleAuthMode(); }
             else { currentUser = data.user; localStorage.setItem('chaT_user', JSON.stringify(currentUser)); showApp(); }
         } else { alert(data.error); }
     } catch (e) { alert("通信エラー"); }
@@ -59,7 +59,7 @@ function startDM(targetId, targetName) {
     const ids = [currentUser.user_id, targetId].sort();
     currentChannelId = `dm_${ids[0]}_${ids[1]}`;
     updateHeader(`${targetName} とのDM`);
-    if(window.innerWidth <= 768) toggleSidebar(); // スマホなら閉じる
+    if(window.innerWidth <= 768) toggleSidebar();
     loadMessages();
 }
 
@@ -71,8 +71,7 @@ function selectChannel(id) {
 }
 
 function updateHeader(title) {
-    document.getElementById('current-channel-name').textContent = title;
-    document.getElementById('mobile-channel-name').textContent = title;
+    document.getElementById('display-channel-name').textContent = title;
 }
 
 async function loadMessages() {
