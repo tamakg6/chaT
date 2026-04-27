@@ -1,4 +1,4 @@
-const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // ←ここを自分のURLに！
+const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // ←自分のURLに！
 let currentUser = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
 let lastMsgCounts = {}; 
@@ -19,10 +19,8 @@ async function handleAuth() {
     const password = document.getElementById('auth-password').value;
     const display_name = document.getElementById('auth-displayname').value;
     if(!user_id || !password) return alert("入力してください");
-
-    const endpoint = isSignUp ? "/register" : "/login";
     try {
-        const res = await fetch(`${API_URL}${endpoint}`, {
+        const res = await fetch(`${API_URL}${isSignUp ? "/register" : "/login"}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id, password, display_name })
@@ -30,13 +28,9 @@ async function handleAuth() {
         const data = await res.json();
         if (res.ok) {
             if (isSignUp) { alert("完了！ログインしてください"); toggleAuthMode(); }
-            else { 
-                currentUser = data.user; 
-                localStorage.setItem('chaT_user', JSON.stringify(currentUser));
-                showApp(); 
-            }
+            else { currentUser = data.user; localStorage.setItem('chaT_user', JSON.stringify(currentUser)); showApp(); }
         } else { alert(data.error); }
-    } catch (e) { alert("ログインに失敗しました。URLを確認してください。"); }
+    } catch (e) { alert("通信エラー"); }
 }
 
 function showApp() {
@@ -47,11 +41,17 @@ function showApp() {
     loadUserList();
     setInterval(updatePolling, 3000);
     selectChannel('general');
+
+    // textareaの自動伸縮
+    const tx = document.getElementById('message-input');
+    tx.addEventListener('input', () => {
+        tx.style.height = 'auto';
+        tx.style.height = tx.scrollHeight + 'px';
+    });
 }
 
 async function updatePolling() {
     await loadMessages(currentChannelId);
-    // サイドバーにあるIDすべてをチェック
     document.querySelectorAll('#sidebar li[data-id]').forEach(li => {
         const id = li.getAttribute('data-id');
         if (id !== currentChannelId) checkUnreadFor(id);
@@ -73,18 +73,14 @@ async function checkUnreadFor(channelId) {
 async function loadMessages(channelId) {
     try {
         const res = await fetch(`${API_URL}/messages?channel=${channelId}`);
-        if (!res.ok) return;
         const data = await res.json();
         const msgDiv = document.getElementById('messages');
-        
         if (lastMsgCounts[channelId] !== undefined && data.length > lastMsgCounts[channelId]) {
-            const newMsg = data[data.length - 1];
-            if (newMsg.sender_id !== currentUser.user_id) {
+            if (data[data.length - 1].sender_id !== currentUser.user_id) {
                 document.getElementById('notification-sound').play().catch(()=>{});
             }
         }
         lastMsgCounts[channelId] = data.length;
-
         if (channelId === currentChannelId) {
             const isBottom = msgDiv.scrollHeight - msgDiv.scrollTop <= msgDiv.clientHeight + 100;
             msgDiv.innerHTML = data.map(m => `
@@ -103,11 +99,7 @@ function renderBadges() {
         const id = li.getAttribute('data-id');
         let badge = li.querySelector('.unread-badge');
         if (unreadChannels.has(id)) {
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'unread-badge';
-                li.appendChild(badge);
-            }
+            if (!badge) { badge = document.createElement('span'); badge.className = 'unread-badge'; li.appendChild(badge); }
         } else if (badge) { badge.remove(); }
     });
 }
@@ -118,18 +110,34 @@ function selectChannel(id) {
     renderBadges();
     const isAnnounce = (id === 'announcement');
     document.getElementById('display-channel-name').textContent = isAnnounce ? "📢 お知らせ" : `# ${id}`;
-    const container = document.getElementById('chat-container');
     const inputArea = document.getElementById('input-area');
-    if (isAnnounce) {
-        container.classList.add('mode-announcement');
-        inputArea.style.display = (currentUser.user_id === 'admin') ? 'block' : 'none';
-    } else {
-        container.classList.remove('mode-announcement');
-        inputArea.style.display = 'block';
-    }
+    inputArea.style.display = (isAnnounce && currentUser.user_id !== 'admin') ? 'none' : 'flex';
     if(window.innerWidth <= 768) document.getElementById('app').classList.remove('sidebar-open');
     loadMessages(id);
 }
+
+// 送信処理
+async function sendMessage() {
+    const input = document.getElementById('message-input');
+    const content = input.value.trim();
+    if (!content) return;
+    input.value = "";
+    input.style.height = 'auto';
+    await fetch(`${API_URL}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel_id: currentChannelId, sender_id: currentUser.user_id, content: content })
+    });
+    loadMessages(currentChannelId);
+}
+
+// PCならEnter(Shiftなし)で送信
+document.getElementById('message-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
 
 async function loadUserList() {
     try {
@@ -143,19 +151,6 @@ async function loadUserList() {
             }).join('');
     } catch (e) {}
 }
-
-document.getElementById('message-input').addEventListener('keypress', async (e) => {
-    if (e.key === 'Enter' && e.target.value.trim()) {
-        const content = e.target.value;
-        e.target.value = "";
-        await fetch(`${API_URL}/messages`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ channel_id: currentChannelId, sender_id: currentUser.user_id, content: content })
-        });
-        loadMessages(currentChannelId);
-    }
-});
 
 function logout() { localStorage.removeItem('chaT_user'); location.reload(); }
 window.onload = () => { if (currentUser) showApp(); };
