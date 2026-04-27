@@ -2,29 +2,25 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyLog | 勉強記録アプリ</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>My Discord Clone</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-    <header>
-        <h1>StudyLog</h1>
-    </header>
-
-    <main>
-        <section class="input-area">
-            <input type="text" id="subject" placeholder="学習内容（例：数学）">
-            <input type="number" id="minutes" placeholder="時間（分）">
-            <button id="save-btn">記録する</button>
-        </section>
-
-        <section class="list-area">
-            <h2>これまでの記録</h2>
-            <ul id="log-list">
+    <div id="app">
+        <nav id="sidebar">
+            <h3>チャンネル</h3>
+            <ul id="channel-list">
                 </ul>
-        </section>
-    </main>
-
-    s<script type="module" src="js/app.js"></script></body>
+        </nav>
+        
+        <main id="chat-area">
+            <header id="channel-header">チャンネルを選択してください</header>
+            <div id="messages"></div>
+            <div id="input-area">
+                <input type="text" id="msg-input" placeholder="メッセージを送信...">
+            </div>
+        </main>
+    </div>
+    <script src="app.js"></script>
+</body>
 </html>
