@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyLog | 勉強記録アプリ</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <header>
+        <h1>StudyLog</h1>
+    </header>
+
+    <main>
+        <section class="input-area">
+            <input type="text" id="subject" placeholder="学習内容（例：数学）">
+            <input type="number" id="minutes" placeholder="時間（分）">
+            <button id="save-btn">記録する</button>
+        </section>
+
+        <section class="list-area">
+            <h2>これまでの記録</h2>
+            <ul id="log-list">
+                </ul>
+        </section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
