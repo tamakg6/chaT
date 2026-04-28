@@ -1,4 +1,4 @@
-const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // ←自分のURLに！
+const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // ←自分のURLに書き換え！
 let currentUser = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
 let lastMsgCounts = {}; 
@@ -42,7 +42,7 @@ function showApp() {
     setInterval(updatePolling, 3000);
     selectChannel('general');
 
-    // textareaの自動伸縮
+    // textareaの自動伸縮設定
     const tx = document.getElementById('message-input');
     tx.addEventListener('input', () => {
         tx.style.height = 'auto';
@@ -116,7 +116,7 @@ function selectChannel(id) {
     loadMessages(id);
 }
 
-// 送信処理
+// 送信ボタン専用の処理
 async function sendMessage() {
     const input = document.getElementById('message-input');
     const content = input.value.trim();
@@ -130,14 +130,6 @@ async function sendMessage() {
     });
     loadMessages(currentChannelId);
 }
-
-// PCならEnter(Shiftなし)で送信
-document.getElementById('message-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
-        e.preventDefault();
-        sendMessage();
-    }
-});
 
 async function loadUserList() {
     try {
