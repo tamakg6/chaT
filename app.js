@@ -1,9 +1,9 @@
-const API_URL = "https://cha-t.tama-kg-6.workers.dev"; // ←自分のURLに書き換え！
+const API_URL = "https://cha-t.tama-kg-6.workers.dev";
 let currentUser = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
 let lastMsgCounts = {}; 
-let unreadChannels = new Set();
 let isSignUp = false;
+let contacts = currentUser ? (JSON.parse(localStorage.getItem(`chaT_contacts_${currentUser.user_id}`)) || []) : [];
 
 function toggleSidebar() { document.getElementById('app').classList.toggle('sidebar-open'); }
 
@@ -28,7 +28,12 @@ async function handleAuth() {
         const data = await res.json();
         if (res.ok) {
             if (isSignUp) { alert("完了！ログインしてください"); toggleAuthMode(); }
-            else { currentUser = data.user; localStorage.setItem('chaT_user', JSON.stringify(currentUser)); showApp(); }
+            else { 
+                currentUser = data.user; 
+                localStorage.setItem('chaT_user', JSON.stringify(currentUser)); 
+                contacts = JSON.parse(localStorage.getItem(`chaT_contacts_${currentUser.user_id}`)) || [];
+                showApp(); 
+            }
         } else { alert(data.error); }
     } catch (e) { alert("通信エラー"); }
 }
@@ -37,12 +42,16 @@ function showApp() {
     document.getElementById('auth-overlay').style.display = "none";
     document.getElementById('app').style.display = "flex";
     document.getElementById('user-display-name').textContent = currentUser.display_name;
-    if ("Notification" in window) Notification.requestPermission();
-    loadUserList();
+
+    // adminなら管理メニューを表示
+    if(currentUser.user_id === 'admin') {
+        document.getElementById('admin-menu').style.display = 'block';
+    }
+
+    renderUserList();
     setInterval(updatePolling, 3000);
     selectChannel('general');
 
-    // textareaの自動伸縮設定
     const tx = document.getElementById('message-input');
     tx.addEventListener('input', () => {
         tx.style.height = 'auto';
@@ -50,98 +59,125 @@ function showApp() {
     });
 }
 
-async function updatePolling() {
-    await loadMessages(currentChannelId);
-    document.querySelectorAll('#sidebar li[data-id]').forEach(li => {
-        const id = li.getAttribute('data-id');
-        if (id !== currentChannelId) checkUnreadFor(id);
-    });
+// メンテナンスチェック (APIから503エラーが返ってきたら表示)
+function checkMaintenance(status) {
+    if (status === 503 && currentUser?.user_id !== 'admin') {
+        document.getElementById('maintenance-overlay').style.display = 'flex';
+        return true;
+    }
+    document.getElementById('maintenance-overlay').style.display = 'none';
+    return false;
 }
 
-async function checkUnreadFor(channelId) {
+// メンテナンス切替 (admin専用)
+async function toggleMaintenanceMode() {
+    const isCurrentlyOn = document.getElementById('maintenance-overlay').style.display === 'flex';
+    const newState = !isCurrentlyOn;
+    if(!confirm(`メンテナンスモードを ${newState ? 'ON' : 'OFF'} にしますか？`)) return;
+
     try {
-        const res = await fetch(`${API_URL}/messages?channel=${channelId}`);
-        const data = await res.json();
-        if (lastMsgCounts[channelId] !== undefined && data.length > lastMsgCounts[channelId]) {
-            unreadChannels.add(channelId);
-            renderBadges();
-        }
-        lastMsgCounts[channelId] = data.length;
+        const res = await fetch(`${API_URL}/admin/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'maintenance_mode', value: newState.toString(), user_id: 'admin' })
+        });
+        if(res.ok) alert(`メンテナンスを ${newState ? '開始' : '解除'} しました。`);
+    } catch(e) { alert("切替に失敗しました。Workers側を確認してください。"); }
+}
+
+async function addContact() {
+    const targetId = document.getElementById('search-userid').value.trim();
+    if (!targetId || targetId === currentUser.user_id) return;
+    if (contacts.find(c => c.user_id === targetId)) return alert("すでに追加されています");
+
+    try {
+        const res = await fetch(`${API_URL}/users`);
+        const users = await res.json();
+        const found = users.find(u => u.user_id === targetId);
+        if (found) {
+            contacts.push({ user_id: found.user_id, display_name: found.display_name });
+            localStorage.setItem(`chaT_contacts_${currentUser.user_id}`, JSON.stringify(contacts));
+            renderUserList();
+            document.getElementById('search-userid').value = "";
+        } else { alert("ユーザーが見つかりません"); }
     } catch (e) {}
+}
+
+function renderUserList() {
+    const list = document.getElementById('user-list');
+    list.innerHTML = contacts.map(u => {
+        const dmId = `dm_${[currentUser.user_id, u.user_id].sort().join('_')}`;
+        return `<li onclick="selectChannel('${dmId}')" data-id="${dmId}">👤 ${u.display_name}</li>`;
+    }).join('');
+}
+
+async function updatePolling() {
+    await loadMessages(currentChannelId);
 }
 
 async function loadMessages(channelId) {
     try {
         const res = await fetch(`${API_URL}/messages?channel=${channelId}`);
+        if (checkMaintenance(res.status)) return;
+        
         const data = await res.json();
         const msgDiv = document.getElementById('messages');
-        if (lastMsgCounts[channelId] !== undefined && data.length > lastMsgCounts[channelId]) {
-            if (data[data.length - 1].sender_id !== currentUser.user_id) {
-                document.getElementById('notification-sound').play().catch(()=>{});
-            }
-        }
-        lastMsgCounts[channelId] = data.length;
+        
         if (channelId === currentChannelId) {
             const isBottom = msgDiv.scrollHeight - msgDiv.scrollTop <= msgDiv.clientHeight + 100;
-            msgDiv.innerHTML = data.map(m => `
-                <div class="msg-item">
-                    <div class="msg-user">${m.display_name || m.sender_id}</div>
-                    <div class="msg-content">${m.content}</div>
-                </div>
-            `).join('');
+            msgDiv.innerHTML = data.map(m => {
+                const date = new Date(m.created_at);
+                const timeStr = isNaN(date.getTime()) ? "" : `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+                // 自分の発言かadminなら削除ボタン表示
+                const delBtn = (m.sender_id === currentUser.user_id || currentUser.user_id === 'admin') 
+                    ? `<span class="delete-btn" onclick="deleteMessage(${m.id})">×</span>` : "";
+
+                return `
+                    <div class="msg-item">
+                        <div class="msg-header">
+                            <span class="msg-user">${m.display_name || m.sender_id}</span>
+                            ${delBtn}
+                        </div>
+                        <div class="msg-content">
+                            ${m.content}
+                            <div class="msg-footer">${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
             if(isBottom) msgDiv.scrollTop = msgDiv.scrollHeight;
         }
     } catch (e) {}
 }
 
-function renderBadges() {
-    document.querySelectorAll('#sidebar li[data-id]').forEach(li => {
-        const id = li.getAttribute('data-id');
-        let badge = li.querySelector('.unread-badge');
-        if (unreadChannels.has(id)) {
-            if (!badge) { badge = document.createElement('span'); badge.className = 'unread-badge'; li.appendChild(badge); }
-        } else if (badge) { badge.remove(); }
-    });
+async function deleteMessage(id) {
+    if(!confirm("削除しますか？")) return;
+    // Workers側の削除API(DELETE)が必要です
+    alert("Workers側に削除処理(DELETE)を追加後、実際に削除可能になります。今はSQLで消してください。");
 }
 
 function selectChannel(id) {
     currentChannelId = id;
-    unreadChannels.delete(id);
-    renderBadges();
     const isAnnounce = (id === 'announcement');
     document.getElementById('display-channel-name').textContent = isAnnounce ? "📢 お知らせ" : `# ${id}`;
-    const inputArea = document.getElementById('input-area');
-    inputArea.style.display = (isAnnounce && currentUser.user_id !== 'admin') ? 'none' : 'flex';
+    document.getElementById('input-area').style.display = (isAnnounce && currentUser.user_id !== 'admin') ? 'none' : 'flex';
     if(window.innerWidth <= 768) document.getElementById('app').classList.remove('sidebar-open');
     loadMessages(id);
 }
 
-// 送信ボタン専用の処理
 async function sendMessage() {
     const input = document.getElementById('message-input');
     const content = input.value.trim();
     if (!content) return;
     input.value = "";
     input.style.height = 'auto';
-    await fetch(`${API_URL}/messages`, {
+    const res = await fetch(`${API_URL}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ channel_id: currentChannelId, sender_id: currentUser.user_id, content: content })
     });
+    if (checkMaintenance(res.status)) return;
     loadMessages(currentChannelId);
-}
-
-async function loadUserList() {
-    try {
-        const res = await fetch(`${API_URL}/users`);
-        const users = await res.json();
-        document.getElementById('user-list').innerHTML = users
-            .filter(u => u.user_id !== currentUser.user_id)
-            .map(u => {
-                const dmId = `dm_${[currentUser.user_id, u.user_id].sort().join('_')}`;
-                return `<li onclick="selectChannel('${dmId}')" data-id="${dmId}">👤 ${u.display_name}</li>`;
-            }).join('');
-    } catch (e) {}
 }
 
 function logout() { localStorage.removeItem('chaT_user'); location.reload(); }
