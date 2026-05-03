@@ -43,7 +43,6 @@ function showApp() {
     document.getElementById('app').style.display = "flex";
     document.getElementById('user-display-name').textContent = currentUser.display_name;
 
-    // adminなら管理メニューを表示
     if(currentUser.user_id === 'admin') {
         document.getElementById('admin-menu').style.display = 'block';
     }
@@ -57,9 +56,16 @@ function showApp() {
         tx.style.height = 'auto';
         tx.style.height = tx.scrollHeight + 'px';
     });
+
+    // Enterで送信、Shift+Enterで改行
+    tx.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
 }
 
-// メンテナンスチェック (APIから503エラーが返ってきたら表示)
 function checkMaintenance(status) {
     if (status === 503 && currentUser?.user_id !== 'admin') {
         document.getElementById('maintenance-overlay').style.display = 'flex';
@@ -69,11 +75,9 @@ function checkMaintenance(status) {
     return false;
 }
 
-// メンテナンス切替 (admin専用)
 async function toggleMaintenanceMode() {
-    // ボタンを押したときに選択肢を出す
     const choice = confirm("メンテナンスを【開始】しますか？\n（[キャンセル] を押すとメンテナンスを【解除】します）");
-    const val = choice ? "true" : "false"; // OKなら開始、キャンセルなら解除
+    const val = choice ? "true" : "false";
 
     try {
         const res = await fetch(`${API_URL}/admin/settings`, {
@@ -85,10 +89,9 @@ async function toggleMaintenanceMode() {
                 user_id: currentUser.user_id 
             })
         });
-        
         if(res.ok) {
             alert(`メンテナンスを ${val === "true" ? 'ON' : 'OFF'} にしました。`);
-            location.reload(); // 状態を自分にも反映させる
+            location.reload();
         }
     } catch(e) {
         alert("Workersとの通信に失敗しました。");
@@ -121,6 +124,13 @@ function renderUserList() {
     }).join('');
 }
 
+// アクティブなチャンネルのハイライトを更新
+function updateActiveSidebarItem(channelId) {
+    document.querySelectorAll('#sidebar li').forEach(el => {
+        el.classList.toggle('active', el.dataset.id === channelId);
+    });
+}
+
 async function updatePolling() {
     await loadMessages(currentChannelId);
 }
@@ -135,35 +145,63 @@ async function loadMessages(channelId) {
         
         if (channelId === currentChannelId) {
             const isBottom = msgDiv.scrollHeight - msgDiv.scrollTop <= msgDiv.clientHeight + 100;
+
             msgDiv.innerHTML = data.map(m => {
+                const isMine = m.sender_id === currentUser.user_id;
                 const date = new Date(m.created_at);
                 const timeStr = isNaN(date.getTime()) ? "" : `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
-                // 自分の発言かadminなら削除ボタン表示
-                const delBtn = (m.sender_id === currentUser.user_id || currentUser.user_id === 'admin') 
-                    ? `<span class="delete-btn" onclick="deleteMessage(${m.id})">×</span>` : "";
+                const canDelete = isMine || currentUser.user_id === 'admin';
+                const delBtn = canDelete ? `<span class="delete-btn" onclick="deleteMessage(${m.id})" title="削除">×</span>` : "";
+
+                // 自分のメッセージは mine クラス、相手は other クラス
+                const sideClass = isMine ? 'mine' : 'other';
+
+                // 自分のメッセージはヘッダーに名前を出さない（LINEスタイル）
+                const headerContent = isMine
+                    ? delBtn
+                    : `<span class="msg-user">${m.display_name || m.sender_id}</span>${delBtn}`;
 
                 return `
-                    <div class="msg-item">
-                        <div class="msg-header">
-                            <span class="msg-user">${m.display_name || m.sender_id}</span>
-                            ${delBtn}
-                        </div>
-                        <div class="msg-content">
-                            ${m.content}
-                            <div class="msg-footer">${timeStr}</div>
-                        </div>
+                    <div class="msg-item ${sideClass}">
+                        <div class="msg-header">${headerContent}</div>
+                        <div class="msg-content">${escapeHtml(m.content)}</div>
+                        <div class="msg-footer">${timeStr}</div>
                     </div>
                 `;
             }).join('');
+
             if(isBottom) msgDiv.scrollTop = msgDiv.scrollHeight;
         }
     } catch (e) {}
 }
 
+// XSS対策：HTMLエスケープ
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+// メッセージ削除（Workers側のDELETE APIを呼び出す）
 async function deleteMessage(id) {
-    if(!confirm("削除しますか？")) return;
-    // Workers側の削除API(DELETE)が必要です
-    alert("Workers側に削除処理(DELETE)を追加後、実際に削除可能になります。今はSQLで消してください。");
+    if (!confirm("削除しますか？")) return;
+    try {
+        const res = await fetch(`${API_URL}/messages/${id}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: currentUser.user_id })
+        });
+        if (res.ok) {
+            await loadMessages(currentChannelId);
+        } else {
+            alert("削除に失敗しました。");
+        }
+    } catch (e) {
+        alert("通信エラーが発生しました。");
+    }
 }
 
 function selectChannel(id) {
@@ -171,6 +209,7 @@ function selectChannel(id) {
     const isAnnounce = (id === 'announcement');
     document.getElementById('display-channel-name').textContent = isAnnounce ? "📢 お知らせ" : `# ${id}`;
     document.getElementById('input-area').style.display = (isAnnounce && currentUser.user_id !== 'admin') ? 'none' : 'flex';
+    updateActiveSidebarItem(id);
     if(window.innerWidth <= 768) document.getElementById('app').classList.remove('sidebar-open');
     loadMessages(id);
 }
@@ -178,11 +217,8 @@ function selectChannel(id) {
 async function sendMessage() {
     const input = document.getElementById('message-input');
     const content = input.value.trim();
-    
-    // 中身が空なら何もしない
     if (!content) return;
 
-    // 送信ボタンを押した瞬間に、見た目上の入力を空にする
     input.value = "";
     input.style.height = 'auto';
 
@@ -198,7 +234,6 @@ async function sendMessage() {
         });
 
         if (res.ok) {
-            // 送信成功したらメッセージを再読み込みして表示
             await loadMessages(currentChannelId);
         } else if (res.status === 503) {
             alert("現在メンテナンス中のため送信できません。");
@@ -207,8 +242,9 @@ async function sendMessage() {
         }
     } catch (e) {
         console.error("Error:", e);
-        alert("通信エラーが発生しました。URLが正しいか確認してください。");
+        alert("通信エラーが発生しました。");
     }
 }
+
 function logout() { localStorage.removeItem('chaT_user'); location.reload(); }
 window.onload = () => { if (currentUser) showApp(); };
