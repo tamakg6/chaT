@@ -114,6 +114,22 @@ body, html {
     font-weight: 500;
 }
 
+/* 未読バッジ */
+.badge {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    margin-left: auto;
+    animation: badgePop 0.25s ease;
+}
+
+@keyframes badgePop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
 /* DM検索エリア */
 #dm-search-area {
     display: flex;
