@@ -87,26 +87,31 @@ function showApp() {
 // Service Worker + Push 購読
 // ===========================
 async function setupPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.log('[chaT] Push非対応ブラウザ');
+    return;
+  }
 
   try {
-    // SW を登録
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    console.log('[chaT] SW 登録完了');
+    // ★ サブディレクトリ対応：./sw.js で登録
+    const reg = await navigator.serviceWorker.register('./sw.js');
+    console.log('[chaT] SW登録完了:', reg.scope);
 
-    // 通知許可を取得
+    // SW が有効になるまで待つ
+    await navigator.serviceWorker.ready;
+    console.log('[chaT] SW準備完了');
+
     const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.log('[chaT] 通知が許可されませんでした');
-      return;
-    }
+    console.log('[chaT] 通知許可:', permission);
+    if (permission !== 'granted') return;
 
-    // VAPID 公開鍵をサーバーから取得
+    // VAPID 公開鍵を取得
     const keyRes = await fetch(`${API_URL}/vapid-public-key`);
     const { publicKey } = await keyRes.json();
+    console.log('[chaT] VAPID公開鍵:', publicKey ? '取得OK' : '取得失敗');
     if (!publicKey) return;
 
-    // 既存の購読があれば使い回す、なければ新規購読
+    // 購読
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
       sub = await reg.pushManager.subscribe({
@@ -115,9 +120,10 @@ async function setupPush() {
       });
     }
     pushSubscription = sub;
+    console.log('[chaT] Push購読:', sub.endpoint);
 
-    // 購読情報をサーバーに登録
-    await fetch(`${API_URL}/subscribe`, {
+    // サーバーに登録
+    const subRes = await fetch(`${API_URL}/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -125,12 +131,12 @@ async function setupPush() {
         subscription: sub.toJSON(),
       }),
     });
-    console.log('[chaT] Push 購読完了');
+    console.log('[chaT] サーバー登録:', subRes.ok ? 'OK' : '失敗');
+
   } catch (e) {
-    console.warn('[chaT] Push 設定エラー:', e);
+    console.error('[chaT] Push設定エラー:', e);
   }
 }
-
 // base64url → Uint8Array（applicationServerKey 用）
 function urlBase64ToUint8Array(base64) {
   const pad  = '='.repeat((4 - base64.length % 4) % 4);
