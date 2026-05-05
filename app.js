@@ -517,4 +517,26 @@ async function logout() {
   location.reload();
 }
 
+async function testPush() {
+  adminLog('テスト通知を送信中...');
+  try {
+    const res = await fetch(`${API_URL}/admin/test-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: currentUser.user_id }),
+    });
+    const data = await res.json();
+    adminLog(`送信先: ${data.total}件`);
+    (data.results || []).forEach(r => {
+      if (r.error) {
+        adminLog(`${r.user_id}: ❌ ${r.error}`, 'error');
+      } else {
+        adminLog(`${r.user_id}: status=${r.status} ${r.ok ? '✅' : '❌'}`, r.ok ? 'info' : 'error');
+      }
+    });
+  } catch (e) {
+    adminLog('テスト送信失敗: ' + e.message, 'error');
+  }
+}
+
 window.onload = () => { if (currentUser) showApp(); };
