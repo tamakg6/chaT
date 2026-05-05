@@ -11,6 +11,38 @@ let contacts   = currentUser
 let pushSubscription = null;
 
 // ===========================
+// 管理者ログパネル
+// ===========================
+function adminLog(msg, type = 'info') {
+  if (type === 'error') console.error(msg);
+  else console.log(msg);
+
+  if (!currentUser || currentUser.user_id !== 'admin') return;
+  const panel = document.getElementById('admin-log-panel');
+  if (!panel) return;
+
+  const line = document.createElement('div');
+  line.className = `log-line log-${type}`;
+  const time = new Date().toLocaleTimeString('ja-JP', { timeZone: 'Asia/Tokyo' });
+  line.textContent = `[${time}] ${msg}`;
+  panel.appendChild(line);
+  while (panel.children.length > 50) panel.removeChild(panel.firstChild);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function clearAdminLog() {
+  const panel = document.getElementById('admin-log-panel');
+  if (panel) panel.innerHTML = '';
+}
+
+function toggleLogPanel() {
+  const wrap = document.getElementById('admin-log-wrap');
+  if (!wrap) return;
+  const isHidden = wrap.style.display === 'none' || wrap.style.display === '';
+  wrap.style.display = isHidden ? 'flex' : 'none';
+}
+
+// ===========================
 // サイドバー開閉
 // ===========================
 function toggleSidebar() { document.getElementById('app').classList.toggle('sidebar-open'); }
@@ -62,6 +94,8 @@ function showApp() {
 
   if (currentUser.user_id === 'admin') {
     document.getElementById('admin-menu').style.display = 'block';
+    document.getElementById('admin-log-wrap').style.display = 'flex';
+    adminLog('管理者ログパネル起動');
   }
 
   setupPush();
@@ -85,48 +119,40 @@ function showApp() {
 // ===========================
 async function setupPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.log('[chaT] このブラウザはWeb Pushに非対応です');
+    adminLog('このブラウザはWeb Pushに非対応です', 'warn');
     return;
   }
 
   try {
-    // ★ サブディレクトリ対応：./sw.js で登録
     const reg = await navigator.serviceWorker.register('./sw.js');
-    console.log('[chaT] SW登録完了 scope:', reg.scope);
+    adminLog('SW登録完了 scope: ' + reg.scope);
 
-    // SW が完全に有効になるまで待つ
     await navigator.serviceWorker.ready;
-    console.log('[chaT] SW準備完了');
+    adminLog('SW準備完了');
 
-    // 通知許可を取得
     const permission = await Notification.requestPermission();
-    console.log('[chaT] 通知許可状態:', permission);
-    if (permission !== 'granted') {
-      console.log('[chaT] 通知が許可されませんでした。設定から変更できます。');
-      return;
-    }
+    adminLog('通知許可状態: ' + permission, permission === 'granted' ? 'info' : 'warn');
+    if (permission !== 'granted') return;
 
-    // VAPID 公開鍵をサーバーから取得
     const keyRes = await fetch(`${API_URL}/vapid-public-key`);
     const { publicKey } = await keyRes.json();
-    console.log('[chaT] VAPID公開鍵:', publicKey ? '取得OK' : '★取得失敗（環境変数を確認）');
+    adminLog('VAPID公開鍵: ' + (publicKey ? '取得OK (' + publicKey.slice(0, 20) + '...)' : '★取得失敗'), publicKey ? 'info' : 'error');
     if (!publicKey) return;
 
-    // 既存の購読があれば使い回す、なければ新規購読
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
-      console.log('[chaT] 新規Push購読を作成中...');
+      adminLog('新規Push購読を作成中...');
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
+      adminLog('新規購読作成完了');
     } else {
-      console.log('[chaT] 既存のPush購読を使用');
+      adminLog('既存のPush購読を使用');
     }
     pushSubscription = sub;
-    console.log('[chaT] Push購読エンドポイント:', sub.endpoint.slice(0, 60) + '...');
+    adminLog('エンドポイント: ' + sub.endpoint.slice(0, 50) + '...');
 
-    // 購読情報をサーバーに送信
     const subRes = await fetch(`${API_URL}/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -135,10 +161,10 @@ async function setupPush() {
         subscription: sub.toJSON(),
       }),
     });
-    console.log('[chaT] サーバーへの購読登録:', subRes.ok ? '✅ 成功' : '★ 失敗 status=' + subRes.status);
+    adminLog('サーバー登録: ' + (subRes.ok ? '✅ 成功' : '★ 失敗 status=' + subRes.status), subRes.ok ? 'info' : 'error');
 
   } catch (e) {
-    console.error('[chaT] Push設定エラー:', e);
+    adminLog('Push設定エラー: ' + e.message, 'error');
   }
 }
 
