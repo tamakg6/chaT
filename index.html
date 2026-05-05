@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>chaT</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=61">
 </head>
 <body>
     <!-- メンテナンス画面 -->
@@ -34,7 +34,7 @@
 
         <!-- サイドバー -->
         <aside id="sidebar">
-            <div class="server-name">chaT  ver1.5.3b−2</div>
+            <div class="server-name">chaT  ver1.6.1</div>
             <div class="sidebar-scroll">
                 <div class="sidebar-section">公式</div>
                 <ul id="official-list">
@@ -52,6 +52,12 @@
                     <button onclick="addContact()">追加</button>
                 </div>
                 <ul id="user-list"></ul>
+
+                <!-- 通知ボタン（全ユーザー向け） -->
+                <div class="sidebar-section">設定</div>
+                <ul>
+                    <li onclick="enablePushManually()" id="push-btn">🔔 通知を有効にする</li>
+                </ul>
 
                 <!-- 管理者メニュー -->
                 <div id="admin-menu" style="display:none;">
@@ -86,7 +92,7 @@
             </div>
         </main>
 
-        <!-- 管理者ログパネル（admin専用・右下に浮かぶ） -->
+        <!-- 管理者ログパネル（右下に浮かぶ） -->
         <div id="admin-log-wrap" style="display:none; position:fixed; bottom:70px; right:12px; z-index:5000; flex-direction:column; width:340px; max-width:90vw;">
             <div style="background:#1a1a2e; color:#eee; font-size:0.72rem; padding:6px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
                 <span>📋 管理者ログ</span>
@@ -96,6 +102,6 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=61"></script>
 </body>
 </html>
