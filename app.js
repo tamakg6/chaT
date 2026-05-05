@@ -1,14 +1,13 @@
 const API_URL = "https://cha-t.tama-kg-6.workers.dev";
-let currentUser   = JSON.parse(localStorage.getItem('chaT_user')) || null;
+let currentUser      = JSON.parse(localStorage.getItem('chaT_user')) || null;
 let currentChannelId = "general";
 let lastRenderedKey  = {};
 let lastSeenId = JSON.parse(localStorage.getItem('chaT_lastSeen') || '{}');
-let isSignUp  = false;
-let contacts  = currentUser
+let isSignUp   = false;
+let contacts   = currentUser
   ? (JSON.parse(localStorage.getItem(`chaT_contacts_${currentUser.user_id}`)) || [])
   : [];
 
-// Push 購読オブジェクト（unsubscribe 用に保持）
 let pushSubscription = null;
 
 // ===========================
@@ -65,9 +64,7 @@ function showApp() {
     document.getElementById('admin-menu').style.display = 'block';
   }
 
-  // Service Worker 登録 → 完了後に Push 購読
   setupPush();
-
   renderUserList();
   setInterval(updatePolling, 3000);
   setInterval(pollBadges, 10000);
@@ -88,41 +85,48 @@ function showApp() {
 // ===========================
 async function setupPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.log('[chaT] Push非対応ブラウザ');
+    console.log('[chaT] このブラウザはWeb Pushに非対応です');
     return;
   }
 
   try {
     // ★ サブディレクトリ対応：./sw.js で登録
     const reg = await navigator.serviceWorker.register('./sw.js');
-    console.log('[chaT] SW登録完了:', reg.scope);
+    console.log('[chaT] SW登録完了 scope:', reg.scope);
 
-    // SW が有効になるまで待つ
+    // SW が完全に有効になるまで待つ
     await navigator.serviceWorker.ready;
     console.log('[chaT] SW準備完了');
 
+    // 通知許可を取得
     const permission = await Notification.requestPermission();
-    console.log('[chaT] 通知許可:', permission);
-    if (permission !== 'granted') return;
+    console.log('[chaT] 通知許可状態:', permission);
+    if (permission !== 'granted') {
+      console.log('[chaT] 通知が許可されませんでした。設定から変更できます。');
+      return;
+    }
 
-    // VAPID 公開鍵を取得
+    // VAPID 公開鍵をサーバーから取得
     const keyRes = await fetch(`${API_URL}/vapid-public-key`);
     const { publicKey } = await keyRes.json();
-    console.log('[chaT] VAPID公開鍵:', publicKey ? '取得OK' : '取得失敗');
+    console.log('[chaT] VAPID公開鍵:', publicKey ? '取得OK' : '★取得失敗（環境変数を確認）');
     if (!publicKey) return;
 
-    // 購読
+    // 既存の購読があれば使い回す、なければ新規購読
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
+      console.log('[chaT] 新規Push購読を作成中...');
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
+    } else {
+      console.log('[chaT] 既存のPush購読を使用');
     }
     pushSubscription = sub;
-    console.log('[chaT] Push購読:', sub.endpoint);
+    console.log('[chaT] Push購読エンドポイント:', sub.endpoint.slice(0, 60) + '...');
 
-    // サーバーに登録
+    // 購読情報をサーバーに送信
     const subRes = await fetch(`${API_URL}/subscribe`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -131,33 +135,27 @@ async function setupPush() {
         subscription: sub.toJSON(),
       }),
     });
-    console.log('[chaT] サーバー登録:', subRes.ok ? 'OK' : '失敗');
+    console.log('[chaT] サーバーへの購読登録:', subRes.ok ? '✅ 成功' : '★ 失敗 status=' + subRes.status);
 
   } catch (e) {
     console.error('[chaT] Push設定エラー:', e);
   }
 }
+
 // base64url → Uint8Array（applicationServerKey 用）
 function urlBase64ToUint8Array(base64) {
-  const pad  = '='.repeat((4 - base64.length % 4) % 4);
-  const b64  = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
-  const raw  = atob(b64);
+  const pad = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
 }
 
 // ===========================
-// タブが見えているときだけの通知（補助）
+// タブが裏にあるときの補助通知
 // ===========================
 function showInPageNotification(title, body) {
-  if (Notification.permission !== 'granted') return;
-  if (!document.hidden) return;
-  // SW 経由の Push がある場合はここは不要だが念のため残す
-  new Notification(title, {
-    body,
-    icon: '/favicon.ico',
-    tag: 'chaT-tab',
-    renotify: true,
-  });
+  if (Notification.permission !== 'granted' || !document.hidden) return;
+  new Notification(title, { body, icon: '/favicon.ico', tag: 'chaT-tab', renotify: true });
 }
 
 // ===========================
@@ -204,8 +202,7 @@ async function pollBadges() {
       if (hasUnread) unread.push(ch);
     });
 
-    // タブが裏にある場合の補助通知（SW Push と重複しないよう条件を絞る）
-    if (unread.length > 0 && document.hidden) {
+    if (unread.length > 0) {
       showInPageNotification('chaT — 新着メッセージ', `${unread.length}件のチャンネルに未読があります`);
     }
   } catch (_) {}
@@ -290,7 +287,6 @@ function formatDate(d) {
 function formatDateKey(d) {
   return d ? d.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' }) : "";
 }
-
 function escapeHtml(str) {
   return str
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -314,14 +310,14 @@ async function loadMessages(channelId) {
 
     let lastDateKey = null;
     msgDiv.innerHTML = data.map(m => {
-      const isMine   = m.sender_id === currentUser.user_id;
-      const date     = parseJST(m.created_at);
-      const timeStr  = formatTime(date);
-      const dateKey  = formatDateKey(date);
-      const canDel   = isMine || currentUser.user_id === 'admin';
-      const delBtn   = canDel ? `<span class="delete-btn" onclick="deleteMessage(${m.id})" title="削除">×</span>` : "";
+      const isMine    = m.sender_id === currentUser.user_id;
+      const date      = parseJST(m.created_at);
+      const timeStr   = formatTime(date);
+      const dateKey   = formatDateKey(date);
+      const canDel    = isMine || currentUser.user_id === 'admin';
+      const delBtn    = canDel ? `<span class="delete-btn" onclick="deleteMessage(${m.id})" title="削除">×</span>` : "";
       const sideClass = isMine ? 'mine' : 'other';
-      const header   = isMine
+      const header    = isMine
         ? delBtn
         : `<span class="msg-user">${m.display_name || m.sender_id}</span>${delBtn}`;
 
@@ -413,7 +409,6 @@ async function sendMessage() {
 // ログアウト
 // ===========================
 async function logout() {
-  // Push 購読を解除してサーバーにも通知
   if (pushSubscription) {
     try {
       await fetch(`${API_URL}/unsubscribe`, {
