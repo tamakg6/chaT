@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>chaT (Dev/Admin)</title>
+    <title>chaT</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- メンテナンス画面 -->
     <div id="maintenance-overlay" style="display: none;">
         <div class="auth-card">
             <h2>🛠 メンテナンス中</h2>
@@ -15,30 +16,36 @@
         </div>
     </div>
 
+    <!-- ログイン・登録画面 -->
     <div id="auth-overlay">
         <div class="auth-card">
             <h2 id="auth-title">chaT にログイン</h2>
             <input type="text" id="auth-displayname" placeholder="表示名" style="display:none;">
-            <input type="text" id="auth-userid" placeholder="ユーザーID">
-            <input type="password" id="auth-password" placeholder="パスワード">
+            <input type="text" id="auth-userid" placeholder="ユーザーID" autocomplete="username">
+            <input type="password" id="auth-password" placeholder="パスワード" autocomplete="current-password">
             <button onclick="handleAuth()" id="auth-btn">はじめる</button>
             <p onclick="toggleAuthMode()" id="auth-toggle">新規登録はこちら</p>
         </div>
     </div>
 
+    <!-- メインアプリ -->
     <div id="app" style="display: none;">
         <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+        <!-- サイドバー -->
         <aside id="sidebar">
-            <div class="server-name">chaT  ver1.5.3a</div>
+            <div class="server-name">chaT  ver1.6.0</div>
             <div class="sidebar-scroll">
                 <div class="sidebar-section">公式</div>
                 <ul id="official-list">
                     <li onclick="selectChannel('announcement')" data-id="announcement">📢 お知らせ</li>
                 </ul>
+
                 <div class="sidebar-section">チャンネル</div>
                 <ul id="channel-list">
                     <li onclick="selectChannel('general')" data-id="general"># general</li>
                 </ul>
+
                 <div class="sidebar-section">ダイレクトメッセージ</div>
                 <div id="dm-search-area">
                     <input type="text" id="search-userid" placeholder="IDで検索...">
@@ -46,20 +53,27 @@
                 </div>
                 <ul id="user-list"></ul>
 
+                <!-- 管理者メニュー -->
                 <div id="admin-menu" style="display:none;">
                     <div class="sidebar-section">管理ツール</div>
                     <ul id="admin-action-list">
-                        <li onclick="toggleMaintenanceMode()" style="color: #ff4d4f; font-weight: bold;">🛠 メンテナンス切替</li>
+                        <li onclick="toggleMaintenanceMode()">🛠 メンテナンス切替</li>
+                        <li onclick="toggleLogPanel()">📋 ログパネル</li>
                     </ul>
                 </div>
             </div>
+
+            <!-- ユーザー情報 -->
             <div id="user-info-area">
-                <span id="user-display-name"></span>
-                <span id="user-userid-label"></span>
+                <div id="user-name-block">
+                    <span id="user-display-name"></span>
+                    <span id="user-userid-label"></span>
+                </div>
                 <button onclick="logout()">ログアウト</button>
             </div>
         </aside>
 
+        <!-- チャットエリア -->
         <main id="chat-container">
             <header id="main-header">
                 <button id="menu-btn" onclick="toggleSidebar()">☰</button>
@@ -71,8 +85,17 @@
                 <button id="send-btn" onclick="sendMessage()">➤</button>
             </div>
         </main>
+
+        <!-- 管理者ログパネル（admin専用・右下に浮かぶ） -->
+        <div id="admin-log-wrap" style="display:none; position:fixed; bottom:70px; right:12px; z-index:5000; flex-direction:column; width:340px; max-width:90vw;">
+            <div style="background:#1a1a2e; color:#eee; font-size:0.72rem; padding:6px 12px; border-radius:10px 10px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <span>📋 管理者ログ</span>
+                <span onclick="clearAdminLog()" style="cursor:pointer; color:#aaa; font-size:0.7rem;">クリア</span>
+            </div>
+            <div id="admin-log-panel" style="background:#0d0d1a; color:#ccc; font-size:0.7rem; font-family:monospace; padding:8px 10px; height:200px; overflow-y:auto; border-radius:0 0 10px 10px; line-height:1.7;"></div>
+        </div>
     </div>
-    <audio id="notification-sound" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3" preload="auto"></audio>
+
     <script src="app.js"></script>
 </body>
 </html>
