@@ -211,6 +211,10 @@ async function completePushSubscription() {
         subscription: sub.toJSON(),
       }),
     });
+    // 現在のSW登録状態を詳しく確認
+    const swReg = await navigator.serviceWorker.getRegistration('./sw.js');
+    adminLog('SW登録確認: ' + (swReg ? 'あり scope=' + swReg.scope : 'なし！'), swReg ? 'info' : 'error');
+    adminLog('通知許可（再確認）: ' + Notification.permission, Notification.permission === 'granted' ? 'info' : 'error');
     adminLog('サーバー登録: ' + (subRes.ok ? '✅ 成功' : '★ 失敗 status=' + subRes.status), subRes.ok ? 'info' : 'error');
 
   } catch (e) {
