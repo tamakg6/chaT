@@ -1,57 +1,31 @@
-// chaT Service Worker — ブラウザを閉じても通知を受け取る
-
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(clients.claim()));
 
-// ──────────────────────────────────────────
-//  Web Push 受信
-// ──────────────────────────────────────────
 self.addEventListener('push', e => {
-  if (!e.data) return;
-
+  // データが読めなくても必ず通知を出す
   let title = 'chaT';
-  let body  = '新しいメッセージがあります';
-  let tag   = 'chaT-msg';
+  let body  = '（データなし）';
 
   try {
-    const data = e.data.json();
-    title = data.title || title;
-    body  = data.body  || body;
-    tag   = data.tag   || tag;
+    if (e.data) {
+      const d = e.data.json();
+      title = d.title || title;
+      body  = d.body  || body;
+    }
   } catch (_) {
-    body = e.data.text();
+    try { body = e.data?.text() || body; } catch (_) {}
   }
 
   e.waitUntil(
     self.registration.showNotification(title, {
       body,
-      icon:      '/icon.png',
-      badge:     '/icon.png',
-      tag,
-      renotify:  true,
-      vibrate:   [200, 100, 200],
-      data:      { url: self.location.origin },
+      tag: 'chaT-test',
+      renotify: true,
     })
   );
 });
 
-// ──────────────────────────────────────────
-//  通知クリック時にアプリを開く
-// ──────────────────────────────────────────
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  const targetUrl = e.notification.data?.url || self.location.origin;
-
-  e.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
-      // すでに開いているタブがあればフォーカス
-      for (const client of windowClients) {
-        if (client.url.startsWith(targetUrl) && 'focus' in client) {
-          return client.focus();
-        }
-      }
-      // なければ新しいタブで開く
-      return clients.openWindow(targetUrl);
-    })
-  );
+  e.waitUntil(clients.openWindow(self.location.origin + '/chaT/'));
 });
