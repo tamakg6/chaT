@@ -544,4 +544,18 @@ async function testPush() {
   }
 }
 
+async function showLocalNotification() {
+  if (Notification.permission !== 'granted') {
+    adminLog('通知許可がありません: ' + Notification.permission, 'error');
+    return;
+  }
+  adminLog('ローカル通知を表示中...');
+  const reg = await navigator.serviceWorker.ready;
+  await reg.showNotification('chaT ローカルテスト', {
+    body: 'SWから直接表示した通知です',
+    tag: 'local-test',
+  });
+  adminLog('showNotification() 実行完了');
+}
+
 window.onload = () => { if (currentUser) showApp(); };
